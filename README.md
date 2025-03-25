@@ -26,7 +26,7 @@ Unsere Simulation versucht, diese Phänomene nachzubilden und zu visualisieren.
 1. Klonen Sie das Repository:
 ```
 git clone https://github.com/Daniel-Hohmann/Spontaneous-spiral-patterns-in-the-semiconductor-Simulation.git
-cd semiconductor-spiral-simulation
+cd Spontaneous-spiral-patterns-in-the-semiconductor-Simulation
 ```
 2. Erstellen Sie eine virtuelle Umgebung (optional, aber empfohlen):
 ```
