@@ -1,0 +1,110 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from scipy.signal import convolve2d
+from scipy.ndimage import gaussian_filter
+import pandas as pd
+
+# ████████ Simulation Parameters █████████
+GRID_SIZE = 200        # Entspricht 200μm Probengröße
+TIME_STEPS = 500       # Simulationsschritte
+DX = 1e-6              # 1μm pro Gitterpunkt
+DT = 0.1               # Zeitschritt
+
+# Materialeigenschaften
+DIFFUSION_COEFF = 5e-9 # [m²/s]
+ETCH_RATE = 0.15       # Ätzrate 
+STRESS_COEFF = 0.2     # Mechanische Kopplung
+NOISE_LEVEL = 0.05     # Oberflächenrauheit
+
+# ████████ Initialisierungen █████████
+def create_metal_layer():
+    """Erzeugt eine realistische Metallschicht mit:
+    - Zufälligen Dickenvariationen
+    - Korrelierten Defekten
+    - Materialinhomogenitäten"""
+    base = np.random.normal(0, 0.1, (GRID_SIZE, GRID_SIZE))
+    return gaussian_filter(base, sigma=2) + NOISE_LEVEL * np.random.randn(*base.shape)
+
+# Initiale Bedingungen
+surface = create_metal_layer()
+concentration = np.zeros((GRID_SIZE, GRID_SIZE))
+stress = np.zeros_like(surface)
+
+# Startbedingung: Zentraler Tropfen
+concentration[GRID_SIZE//2-15:GRID_SIZE//2+15, 
+             GRID_SIZE//2-15:GRID_SIZE//2+15] = 1.0
+
+# ████████ Physikalische Kernprozesse █████████
+def diffusion():
+    """Simuliert Stofftransport mit Finite-Differenzen-Methode"""
+    global concentration
+    kernel = np.array([[0.05, 0.2, 0.05],
+                       [0.2, -1.0, 0.2],
+                       [0.05, 0.2, 0.05]])
+    concentration += DT * convolve2d(concentration, kernel, 
+                                   mode='same', boundary='wrap') * DIFFUSION_COEFF/DX**2
+
+def mechanical_stress():
+    """Berechnet mechanische Spannungen mit:
+    - Elastizitätstheorie
+    - Nichtlinearer Kopplung an Ätzprozess"""
+    global stress, surface
+    stress_kernel = np.array([[0, 1, 0],
+                              [1, -4, 1],
+                              [0, 1, 0]])
+    new_stress = convolve2d(stress, stress_kernel, mode='same', boundary='wrap')
+    stress = STRESS_COEFF * (new_stress + 0.1 * surface**3)
+
+def etching_process():
+    """Kombinierter Ätzprozess:
+    - Konzentrationsabhängiges Ätzen
+    - Spannungsbeschleunigter Abbau
+    - Nichtlinearer Feedback-Effekt"""
+    global surface, concentration
+    etch_rate = ETCH_RATE * concentration * (1 + 0.5 * stress)
+    surface -= DT * etch_rate
+    np.clip(surface, -1, 1, out=surface)
+
+# ████████ Visualisierung & Analyse █████████
+def init_plot():
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_subplot(111)
+    img = ax.imshow(surface, cmap='twilight_shifted', 
+                   vmin=-0.5, vmax=0.5, 
+                   interpolation='bicubic')
+    fig.colorbar(img, label='Surface Deformation [nm]')
+    return fig, img
+
+def update_frame(frame):
+    diffusion()
+    mechanical_stress()
+    etching_process()
+    
+    img.set_array(surface)
+    img.set_clim(vmin=surface.min(), vmax=surface.max())
+    return img,
+
+# ████████ Hauptsimulation █████████
+if __name__ == "__main__":
+    print("Starting spiral pattern simulation...")
+    print(f"Grid resolution: {GRID_SIZE}x{GRID_SIZE}")
+    print(f"Physical scale: {GRID_SIZE*DX*1e6:.0f}μm")
+    
+    # Setup Animation
+    fig, img = init_plot()
+    ani = FuncAnimation(fig, update_frame, frames=TIME_STEPS,
+                       interval=50, blit=True)
+    
+    # Datenprotokollierung
+    log_data = pd.DataFrame(columns=['Time', 'MaxStress', 'MinHeight'])
+    
+    plt.show()
+    
+    # Manuelles Stoppen der Animation
+    ani.event_source.stop()
+    plt.close(fig)
+    
+    # Nach Simulation: Daten speichern
+    log_data.to_csv('spiral_simulation_log.csv', index=False)
+
