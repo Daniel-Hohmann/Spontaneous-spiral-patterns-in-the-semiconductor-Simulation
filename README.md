@@ -76,4 +76,3 @@ Zu gegebener Zeit möchte ich das Projekt um einige Funktionen erweitern (Parame
 
 - [Originalartikel auf Scinexx](https://www.scinexx.de/news/physik/spontane-spiralmuster-im-halbleiter/)
 - [Reaktions-Diffusions-Systeme in der Physik](https://en.wikipedia.org/wiki/Reaction%E2%80%93diffusion_system)
-- [Spiralwellen in der Natur](https://www.nature.com/subjects/spiral-waves)
