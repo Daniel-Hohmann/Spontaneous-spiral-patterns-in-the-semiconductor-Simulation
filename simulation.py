@@ -8,28 +8,34 @@ import pandas as pd
 # ████████ Simulation Parameters █████████
 GRID_SIZE = 200        # Entspricht 200μm Probengröße
 TIME_STEPS = 500       # Simulationsschritte
-DX = 1e-6              # 1μm pro Gitterpunkt
-DT = 0.1               # Zeitschritt
+DX = 2e-6              # 2μm pro Gitterpunkt (angepasst)
+DT = 0.1               # Zeitschritt (wird dynamisch angepasst)
 
 # Materialeigenschaften
-DIFFUSION_COEFF = 5e-9 # [m²/s]
+DIFFUSION_COEFF = 2e-9 # [m²/s] (reduziert)
 ETCH_RATE = 0.15       # Ätzrate 
-STRESS_COEFF = 0.2     # Mechanische Kopplung
+STRESS_COEFF = 0.15    # Mechanische Kopplung (reduziert)
 NOISE_LEVEL = 0.05     # Oberflächenrauheit
+
+# ████████ Hilfsfunktionen █████████
+def stabilize(arr):
+    arr = np.nan_to_num(arr)
+    return np.clip(arr, -1e100, 1e100).astype(np.float64)
+
+def print_stats():
+    print(f"Stress: {stress.min():.2f} - {stress.max():.2f}")
+    print(f"Concentration: {concentration.min():.2f} - {concentration.max():.2f}")
+    print(f"Surface: {surface.min():.2f} - {surface.max():.2f}")
 
 # ████████ Initialisierungen █████████
 def create_metal_layer():
-    """Erzeugt eine realistische Metallschicht mit:
-    - Zufälligen Dickenvariationen
-    - Korrelierten Defekten
-    - Materialinhomogenitäten"""
     base = np.random.normal(0, 0.1, (GRID_SIZE, GRID_SIZE))
     return gaussian_filter(base, sigma=2) + NOISE_LEVEL * np.random.randn(*base.shape)
 
 # Initiale Bedingungen
-surface = create_metal_layer()
-concentration = np.zeros((GRID_SIZE, GRID_SIZE))
-stress = np.zeros_like(surface)
+surface = create_metal_layer().astype(np.float64)
+concentration = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.float64)
+stress = np.zeros_like(surface, dtype=np.float64)
 
 # Startbedingung: Zentraler Tropfen
 concentration[GRID_SIZE//2-15:GRID_SIZE//2+15, 
@@ -37,34 +43,34 @@ concentration[GRID_SIZE//2-15:GRID_SIZE//2+15,
 
 # ████████ Physikalische Kernprozesse █████████
 def diffusion():
-    """Simuliert Stofftransport mit Finite-Differenzen-Methode"""
-    global concentration
+    global concentration, DT
     kernel = np.array([[0.05, 0.2, 0.05],
                        [0.2, -1.0, 0.2],
                        [0.05, 0.2, 0.05]])
-    concentration += DT * convolve2d(concentration, kernel, 
-                                   mode='same', boundary='wrap') * DIFFUSION_COEFF/DX**2
+    delta = DT * convolve2d(concentration, kernel, 
+                            mode='same', boundary='wrap') * DIFFUSION_COEFF/(DX**2 + 1e-12)
+    concentration = stabilize(concentration + delta)
+    
+    # Adaptive Zeitschrittsteuerung
+    max_delta = np.max(np.abs(concentration))
+    DT = 0.1 if max_delta < 1e3 else 0.01
 
 def mechanical_stress():
-    """Berechnet mechanische Spannungen mit:
-    - Elastizitätstheorie
-    - Nichtlinearer Kopplung an Ätzprozess"""
     global stress, surface
     stress_kernel = np.array([[0, 1, 0],
                               [1, -4, 1],
                               [0, 1, 0]])
     new_stress = convolve2d(stress, stress_kernel, mode='same', boundary='wrap')
-    stress = STRESS_COEFF * (new_stress + 0.1 * surface**3)
+    stress = stabilize(STRESS_COEFF * (new_stress + 0.1 * surface**3))
 
 def etching_process():
-    """Kombinierter Ätzprozess:
-    - Konzentrationsabhängiges Ätzen
-    - Spannungsbeschleunigter Abbau
-    - Nichtlinearer Feedback-Effekt"""
-    global surface, concentration
+    global surface, concentration, stress
+    np.clip(stress, -1e3, 1e3, out=stress)
+    np.clip(concentration, 0, 1e3, out=concentration)
+    
     etch_rate = ETCH_RATE * concentration * (1 + 0.5 * stress)
     surface -= DT * etch_rate
-    np.clip(surface, -1, 1, out=surface)
+    surface = stabilize(surface)
 
 # ████████ Visualisierung & Analyse █████████
 def init_plot():
@@ -80,6 +86,10 @@ def update_frame(frame):
     diffusion()
     mechanical_stress()
     etching_process()
+    
+    if frame % 100 == 0:
+        print(f"Frame {frame}")
+        print_stats()
     
     img.set_array(surface)
     img.set_clim(vmin=surface.min(), vmax=surface.max())
@@ -107,4 +117,3 @@ if __name__ == "__main__":
     
     # Nach Simulation: Daten speichern
     log_data.to_csv('spiral_simulation_log.csv', index=False)
-

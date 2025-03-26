@@ -1,5 +1,8 @@
 # Spontane Spiralmuster in Halbleitern - Simulation
 
+## Current Issue
+nach dem schliesen der simulation die ergebnisse in der .json datei speichern
+
 ## Überblick
 
 Dieses Projekt simuliert die Entstehung spontaner Spiralmuster in Halbleitermaterialien, basierend auf dem Experiment, das in [diesem Artikel von Scinexx](https://www.scinexx.de/news/physik/spontane-spiralmuster-im-halbleiter/) beschrieben wird. Die Simulation modelliert die komplexe Interaktion zwischen chemischem Ätzen, mechanischem Stress und Diffusionsprozessen in einer dünnen Metallschicht auf einem Halbleitersubstrat.
