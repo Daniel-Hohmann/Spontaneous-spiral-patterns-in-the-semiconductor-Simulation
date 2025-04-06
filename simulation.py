@@ -5,7 +5,7 @@ from scipy.signal import convolve2d
 from scipy.ndimage import gaussian_filter
 import pandas as pd
 
-# ████████ Simulation Parameters █████████
+# Simulation Parameters
 GRID_SIZE = 200        # Entspricht 200μm Probengröße
 TIME_STEPS = 500       # Simulationsschritte
 DX = 2e-6              # 2μm pro Gitterpunkt (angepasst)
@@ -17,7 +17,7 @@ ETCH_RATE = 0.15       # Ätzrate
 STRESS_COEFF = 0.15    # Mechanische Kopplung (reduziert)
 NOISE_LEVEL = 0.05     # Oberflächenrauheit
 
-# ████████ Hilfsfunktionen █████████
+# Hilfsfunktionen
 def stabilize(arr):
     arr = np.nan_to_num(arr)
     return np.clip(arr, -1e100, 1e100).astype(np.float64)
@@ -27,7 +27,7 @@ def print_stats():
     print(f"Concentration: {concentration.min():.2f} - {concentration.max():.2f}")
     print(f"Surface: {surface.min():.2f} - {surface.max():.2f}")
 
-# ████████ Initialisierungen █████████
+# Initialisierungen 
 def create_metal_layer():
     base = np.random.normal(0, 0.1, (GRID_SIZE, GRID_SIZE))
     return gaussian_filter(base, sigma=2) + NOISE_LEVEL * np.random.randn(*base.shape)
@@ -41,7 +41,7 @@ stress = np.zeros_like(surface, dtype=np.float64)
 concentration[GRID_SIZE//2-15:GRID_SIZE//2+15, 
              GRID_SIZE//2-15:GRID_SIZE//2+15] = 1.0
 
-# ████████ Physikalische Kernprozesse █████████
+# Physikalische Kernprozesse
 def diffusion():
     global concentration, DT
     kernel = np.array([[0.05, 0.2, 0.05],
@@ -72,7 +72,7 @@ def etching_process():
     surface -= DT * etch_rate
     surface = stabilize(surface)
 
-# ████████ Visualisierung & Analyse █████████
+# Visualisierung & Analyse
 def init_plot():
     fig = plt.figure(figsize=(10,8))
     ax = fig.add_subplot(111)
@@ -95,7 +95,7 @@ def update_frame(frame):
     img.set_clim(vmin=surface.min(), vmax=surface.max())
     return img,
 
-# ████████ Hauptsimulation █████████
+# Hauptsimulation
 if __name__ == "__main__":
     print("Starting spiral pattern simulation...")
     print(f"Grid resolution: {GRID_SIZE}x{GRID_SIZE}")
